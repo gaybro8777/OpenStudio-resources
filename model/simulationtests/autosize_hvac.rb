@@ -3,6 +3,8 @@
 require 'openstudio'
 require_relative 'lib/baseline_model'
 
+t = Time.now
+
 model = BaselineModel.new
 
 # make a 8 story, 100m X 50m, 40 + 8 zone core/perimeter building
@@ -295,10 +297,10 @@ chiller = OpenStudio::Model::ChillerAbsorption.new(model)
 chw_loop.addSupplyBranchForComponent(chiller)
 cw_loop.addDemandBranchForComponent(chiller)
 swh_loop.addDemandBranchForComponent(chiller) # Heat Recovery
-chiller = OpenStudio::Model::ChillerElectricReformulatedEIR.new(model)
-chw_loop.addSupplyBranchForComponent(chiller)
-cw_loop.addDemandBranchForComponent(chiller)
-swh_loop.addDemandBranchForComponent(chiller) # Heat Recovery
+#chiller = OpenStudio::Model::ChillerElectricReformulatedEIR.new(model)
+#chw_loop.addSupplyBranchForComponent(chiller)
+#cw_loop.addDemandBranchForComponent(chiller)
+#swh_loop.addDemandBranchForComponent(chiller) # Heat Recovery
 
 chw_loop.addSupplyBranchForComponent(OpenStudio::Model::DistrictCooling.new(model))
 wwhp = OpenStudio::Model::HeatPumpWaterToWaterEquationFitCooling.new(model)
@@ -368,7 +370,7 @@ sat_sch = OpenStudio::Model::ScheduleRuleset.new(model)
 sat_sch.defaultDaySchedule.addValue(OpenStudio::Time.new(0, 24, 0, 0), sat_c)
 sat_stpt_manager = OpenStudio::Model::SetpointManagerScheduled.new(model, sat_sch)
 sat_stpt_manager.addToNode(out_1)
-fan = OpenStudio::Model::FanComponentModel.new(model)
+fan = OpenStudio::Model::FanSystemModel.new(model)
 fan.addToNode(in_1)
 oa_controller = OpenStudio::Model::ControllerOutdoorAir.new(model)
 oa_controller.autosizeMinimumOutdoorAirFlowRate # OS has a bad default of zero, which disables autosizing
@@ -634,10 +636,10 @@ humidistat.setHumidifyingRelativeHumiditySetpointSchedule(dehumidify_sch)
 zones[33].setZoneControlHumidistat(humidistat)
 humidifier = OpenStudio::Model::HumidifierSteamElectric.new(model)
 humidifier.addToNode(unitary_loop.supplyOutletNode)
-humidifier_steam = OpenStudio::Model::HumidifierSteamGas.new(model)
-humidifier_steam.addToNode(unitary_loop.supplyOutletNode)
-spm = OpenStudio::Model::SetpointManagerSingleZoneHumidityMinimum.new(model)
-spm.addToNode(unitary_loop.supplyOutletNode)
+#humidifier_steam = OpenStudio::Model::HumidifierSteamGas.new(model)
+#humidifier_steam.addToNode(unitary_loop.supplyOutletNode)
+#spm = OpenStudio::Model::SetpointManagerSingleZoneHumidityMinimum.new(model)
+#spm.addToNode(unitary_loop.supplyOutletNode)
 
 # Create an  internal source construction for the radiant systems
 int_src_const = OpenStudio::Model::ConstructionWithInternalSource.new(model)
@@ -930,11 +932,7 @@ zones.each_with_index do |zn, zone_index|
     low_temp_cst_rad.addToThermalZone(zn)
 
   when 39
-    zoneHVACCoolingPanelRadiantConvectiveWater = OpenStudio::Model::ZoneHVACCoolingPanelRadiantConvectiveWater.new(model)
-    panel_coil = zoneHVACCoolingPanelRadiantConvectiveWater.coolingCoil.to_CoilCoolingWaterPanelRadiant.get
 
-    chw_loop.addDemandBranchForComponent(panel_coil)
-    zoneHVACCoolingPanelRadiantConvectiveWater.addToThermalZone(zn)
 
   when 26, 27, 28, 29, 30, 31, 32, 33, 38
     # Previously used for the unitary systems, dehum, etc
@@ -944,6 +942,17 @@ zones.each_with_index do |zn, zone_index|
   end
 end
 
+puts "#{Time.now - t}"
+t = Time.now
+
 # save the OpenStudio model (.osm)
 model.save_openstudio_osm({ 'osm_save_directory' => Dir.pwd,
                             'osm_name' => 'in.osm' })
+
+puts "#{Time.now - t}"
+t = Time.now
+
+ft = OpenStudio::EnergyPlus::ForwardTranslator.new
+w = ft.translateModel(model)
+
+puts "#{Time.now - t}"

@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require 'openstudio'
-require 'lib/baseline_model'
+require_relative 'lib/baseline_model'
+
+t = Time.now
 
 model = BaselineModel.new
 
@@ -296,6 +298,17 @@ terminal = OpenStudio::Model::AirTerminalSingleDuctInletSideMixer.new(model)
 air_loop.addBranchForZone(story_2_core_thermal_zone, terminal)
 fourPipeFanCoil2.addToNode(terminal.outletModelObject.get.to_Node.get)
 
+puts "#{Time.now - t}"
+t = Time.now
+
 # save the OpenStudio model (.osm)
 model.save_openstudio_osm({ 'osm_save_directory' => Dir.pwd,
                             'osm_name' => 'in.osm' })
+
+puts "#{Time.now - t}"
+t = Time.now
+
+ft = OpenStudio::EnergyPlus::ForwardTranslator.new
+w = ft.translateModel(model)
+
+puts "#{Time.now - t}"
